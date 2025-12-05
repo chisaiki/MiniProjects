@@ -27,7 +27,22 @@ The user can repeatedly test new input strings, and the machine halts when it re
 
 - Automatic tape padding with blank symbols (B)
 
-Location:
+**Key Concepts Used**
+
+- Dynamic memory (malloc, realloc, free)
+
+- Text parsing with getline()
+
+- Custom vector data structure
+
+- Turing Machine logic (state, tape, head, transitions)
+
+- Signal handling (SIGINT)
+
+- File I/O
+
+
+**Location:**
 /TuringMachine
 
 # About This Repo
