@@ -44,9 +44,6 @@ The user can repeatedly test new input strings, and the machine halts when it re
 
 - File I/O
 
-
-**Location:**
-/TuringMachine
 ---
 
 
