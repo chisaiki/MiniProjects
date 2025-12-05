@@ -50,14 +50,9 @@ The user can repeatedly test new input strings, and the machine halts when it re
 This repository is mainly for practice and experimentation.
 Each project focuses on one or more of the following:
 
-Low-level programming (C/C++)
+- Low-level programming (C/C++)
+- Algorithms
+- Simulation or modeling
+- Memory-aware and performance-focused design
 
-Data structure implementation
-
-Algorithms
-
-Simulation or modeling
-
-Memory-aware and performance-focused design
-
-More projects will be added over time as learning continues.
+More projects will be added over time as learning continues!
