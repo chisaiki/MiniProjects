@@ -17,4 +17,5 @@ upload(){
 help (){
     echo "All Functions"
     echo "home, pone - LLS/PhaseOne"
+    echo "upload - save to github"
 }
