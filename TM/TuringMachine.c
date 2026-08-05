@@ -1,0 +1,281 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <signal.h>
+
+#define TRUE 1
+
+/*******************Vector Implementation and Functions*******************/
+typedef struct { 
+    char *data;      /*Pointer to the array of elements*/ 
+    size_t size;    /*Current number of elements*/
+    size_t capacity; /*Maximum number of elements that can be stored*/
+} Vector; 
+
+Vector* CreateVector(size_t initialCapacity) 
+{ 
+    Vector *vec = malloc(sizeof(Vector)); 
+    vec->data = malloc(initialCapacity * sizeof(char) * 8); 
+    vec->size = 0; 
+    vec->capacity = initialCapacity; 
+    return vec; 
+} 
+ 
+void AddElements(Vector *vec, char value) 
+{ 
+    if (vec->size >= vec->capacity) 
+    { 
+        /*Resize the vector if necessary*/
+        vec->capacity *= 2; 
+        vec->data = realloc(vec->data, vec->capacity * sizeof(char) * 8); 
+    } 
+    vec->data[vec->size++] = value; 
+} 
+ 
+int GetElements(Vector *vec, size_t index) 
+{ 
+    if (index < vec->size) { 
+        return vec->data[index]; 
+    } 
+    /*Handle out-of-bounds access*/
+    fprintf(stderr, "Index out of bounds.\n"); 
+    exit(1); 
+} 
+
+void VectorSet(Vector *vec, int index, char item)
+{
+    if (index >= 0 && index < vec->size)
+        vec->data[index] = item;
+}
+ 
+void FreeVector(Vector *vec) 
+{ 
+    free(vec->data); 
+    free(vec); 
+} 
+
+/*Global Variables*/
+char state = '0'; /*Begin program in start state: q0*/
+int inputSize = 0; /*Size of input string*/
+int tapeHead = 0;
+int continueTM = 1; /*Controls if TM program will continue to run*/
+int restart = 0;
+
+char* fileName;
+char* inputWord;
+FILE* file;
+
+/*************************Start of TM Functions**************************/
+
+void sigint_handle(int _);
+
+/*Begin running TM program on input word*/
+void TMStart(char* inputWord, FILE *File);
+
+void ReadTMCode(FILE *File, Vector *VectorLeft);
+
+void displayTM(Vector *Vector);
+
+int main()
+{ 
+    fileName = (char*)malloc(sizeof(char));
+    inputWord = (char*)malloc(sizeof(char) * 8);
+
+    signal(SIGINT, sigint_handle);
+
+    /*Take in user input file*/
+    printf("Enter file name: ");
+    scanf("%s", fileName);
+   
+    file = fopen(fileName, "r");
+
+    /*Check if file exists in the current directory*/
+    if (file == NULL)
+    {
+        perror("Error Opening File: File may not exist.");
+        exit(1);
+    }
+
+    /*Start TM program with user input word*/
+    TMStart(inputWord, file);
+
+    fclose(file);
+    free(fileName);
+    free(inputWord);
+
+}
+
+/*Signal Handling for keyboard inputs*/
+void sigint_handle(int _)
+{
+	if (restart == 2) {
+	    fclose(file);
+	    free(fileName);
+	    free(inputWord);
+	    exit(0);
+	}
+	restart = 1;
+}
+
+/*Read the input word*/
+void TMStart(char* inputWord, FILE *File)
+{
+    while(TRUE)
+    {
+        Input_Reset:
+
+        state = '0';
+	    printf("\n**********************************************");
+        printf("\nIf you type in 'halt',the entire program will end.\nEnter input word: ");
+
+        /*For the case where we could get a sigint during scanf*/
+        restart = 2;
+
+        /*Code breaks if this isn't included, causes terminal to become unresponsive*/
+        if (scanf("%s", inputWord) == EOF) 
+        {
+            return;
+        }
+        
+        restart = 0;
+
+         /*If user types in 'halt', when entering input word, program will end*/
+         if (strcmp(inputWord, "halt") == 0)
+         {
+             printf("\nExiting Program ...\n");
+             exit(0);
+         }
+
+         for (int i = 0; inputWord[i] != '\0'; i++)
+         {
+             inputSize++;
+         }
+         
+        /*Initialize left and right vectors*/
+        Vector *vectorLeft = CreateVector(inputSize * 2); 
+
+
+        /*Fill the vector with B and input string*/
+        int stopPoint = inputSize / 4;
+
+        for(int i = 0; i < stopPoint + 1; i++)
+        {
+            AddElements(vectorLeft, 'B');
+        }
+
+        for (int i = 0; inputWord[i] != '\0'; i++)
+        {
+             AddElements(vectorLeft, inputWord[i]);
+        }
+
+        for (int i = stopPoint + inputSize; i < inputSize * 2; i++)
+        {
+            AddElements(vectorLeft, 'B');
+        }
+
+        /*Initialize Tapehead to point at first input word character*/
+        tapeHead = stopPoint + 1;
+
+
+        /*Decides if TM should continue computation or not*/
+        while(continueTM == 1)
+        {
+            displayTM(vectorLeft);
+
+            /*Does TM Computation*/
+            ReadTMCode(File, vectorLeft);
+	        usleep(10); /*Added so reaction to SIGINIT could happen at a reasonable speed*/
+
+            if (restart) 
+            {
+                restart = 0;
+                goto Input_Reset;
+            }
+
+        }
+                    
+        state = 0;
+        continueTM = 1;
+        FreeVector(vectorLeft);    
+        goto Input_Reset;   
+    }
+}
+
+void ReadTMCode(FILE *File, Vector *VectorLeft) //edit this to get total # of states
+{
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+    int match = 0;
+
+    while (nread = getline(&line, &len, File) != EOF) 
+    {
+        if(*line == '/' || *line == ' ')
+        {
+            line++;
+        }
+        
+        /*If the state and current symbol match*/
+        if ((line[0] == state) && (line[2] == VectorLeft->data[tapeHead]))
+        {                      
+            /*Set the next state*/  
+            state = line[4];
+
+            /*Rewrite current tape cell with new input symbol according to code file*/
+            VectorSet(VectorLeft, tapeHead, line[6]);
+            
+            /*Control tape head movement*/
+            if(line[8] == 'L')
+            tapeHead--;
+            
+            else if(line[8] == 'R')
+            tapeHead++;
+
+            /*If reached final state, leave the TM Program and allow for another string input*/
+            if(state == 'f')
+            {
+                displayTM(VectorLeft);
+                printf("\nInput accepted. Halting ...");
+                continueTM = 0;
+                rewind(File);
+                return;
+            }
+
+            match = 1;
+            rewind(File);
+            return;
+        } 
+    }
+
+    /*If no state/tape element pair found, it should crash*/
+    if (match == 0)
+    {
+        printf("\nTM Crashed.");
+    }
+
+    continueTM = 0;
+    rewind(File);
+    return;
+}
+
+
+void displayTM(Vector *Vector)
+{
+    printf("\n");
+
+    for(int i = 0; i < Vector->size; i++)
+    {
+        if(i == tapeHead)
+        {
+            printf("[%c]", state);
+        }
+
+        if(Vector->data[i] != 'B')
+        {
+            printf("%c", Vector->data[i]);
+        }
+    }
+}
+
+
