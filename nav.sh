@@ -8,6 +8,12 @@ pone() {
     cd "$MP_ROOT/LLS/PhaseOne"
 }
 
+upload(){
+    git add .
+    git commit -m "Push to GH"
+    git push origin main
+}
+
 help (){
     echo "All Functions"
     echo "home, pone - LLS/PhaseOne"
